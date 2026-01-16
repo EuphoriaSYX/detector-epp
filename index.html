@@ -611,6 +611,53 @@
             color: #a855f7;
         }
 
+        /* Access Granted Banner */
+        .access-granted-banner {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 16px 24px;
+            margin-top: 20px;
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(168, 85, 247, 0.15));
+            border: 2px solid #22c55e;
+            border-radius: 12px;
+            animation: pulse-border 1.5s ease-in-out infinite;
+        }
+
+        .access-granted-banner.show {
+            display: flex;
+        }
+
+        @keyframes pulse-border {
+            0%, 100% { border-color: #22c55e; box-shadow: 0 0 10px rgba(34, 197, 94, 0.3); }
+            50% { border-color: #a855f7; box-shadow: 0 0 20px rgba(168, 85, 247, 0.4); }
+        }
+
+        .access-granted-banner svg {
+            width: 28px;
+            height: 28px;
+            color: #22c55e;
+            animation: check-bounce 0.6s ease;
+        }
+
+        @keyframes check-bounce {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        .access-granted-banner .access-text {
+            font-size: 1.1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            background: linear-gradient(90deg, #22c55e, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
         /* Reasoning Section */
         .reasoning-section {
             margin-top: 24px;
@@ -925,6 +972,15 @@
                 <span id="confidence-value">-- %</span>
             </div>
 
+            <!-- Access Granted Banner -->
+            <div class="access-granted-banner" id="access-banner">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+                <span class="access-text">Acceso Autorizado</span>
+            </div>
+
             <!-- Reasoning Section -->
             <div class="reasoning-section" id="reasoning-section" style="display: none;">
                 <div class="reasoning-title">
@@ -964,6 +1020,93 @@
         const THRESHOLD_SECONDARY = 0.05;    // Umbral minimo para segundo EPP (muy bajo)
         const THRESHOLD_NORMAL_MAX = 0.30;   // Si normal esta por debajo, hay EPP presente
         const THRESHOLD_COMBINED_SUM = 0.50; // Suma minima de casco+glass para considerar combinado
+
+        // ============================================================
+        // SISTEMA DE AUDIO - SONIDOS DE NOTIFICACION
+        // ============================================================
+        let audioContext = null;
+        let lastSoundTime = 0;
+        let wasCompleteLastFrame = false;
+        const SOUND_COOLDOWN = 3000; // 3 segundos entre sonidos
+
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            return audioContext;
+        }
+
+        function playAccessGrantedSound() {
+            const now = Date.now();
+            if (now - lastSoundTime < SOUND_COOLDOWN) return;
+            lastSoundTime = now;
+
+            const ctx = initAudio();
+            const now2 = ctx.currentTime;
+
+            // Secuencia de tonos para "Acceso Aceptado"
+            const frequencies = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+            const durations = [0.15, 0.15, 0.15, 0.3];
+
+            let startTime = now2;
+            frequencies.forEach((freq, i) => {
+                const oscillator = ctx.createOscillator();
+                const gainNode = ctx.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(ctx.destination);
+
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(freq, startTime);
+
+                gainNode.gain.setValueAtTime(0, startTime);
+                gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.02);
+                gainNode.gain.linearRampToValueAtTime(0.3, startTime + durations[i] - 0.02);
+                gainNode.gain.linearRampToValueAtTime(0, startTime + durations[i]);
+
+                oscillator.start(startTime);
+                oscillator.stop(startTime + durations[i]);
+
+                startTime += durations[i];
+            });
+
+            // Agregar un tono de confirmacion final
+            setTimeout(() => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(1318.51, ctx.currentTime); // E6
+                gain.gain.setValueAtTime(0.2, ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.4);
+                osc.start(ctx.currentTime);
+                osc.stop(ctx.currentTime + 0.4);
+            }, 750);
+        }
+
+        function playWarningSound() {
+            const now = Date.now();
+            if (now - lastSoundTime < SOUND_COOLDOWN) return;
+            lastSoundTime = now;
+
+            const ctx = initAudio();
+            const now2 = ctx.currentTime;
+
+            // Dos tonos descendentes para alerta
+            [400, 300].forEach((freq, i) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(freq, now2 + i * 0.2);
+                gain.gain.setValueAtTime(0.15, now2 + i * 0.2);
+                gain.gain.linearRampToValueAtTime(0, now2 + i * 0.2 + 0.18);
+                osc.start(now2 + i * 0.2);
+                osc.stop(now2 + i * 0.2 + 0.2);
+            });
+        }
 
         // Icons SVG
         const icons = {
@@ -1387,7 +1530,18 @@
                 `;
                 reasoningContent.innerHTML = reasoningHTML;
 
+                // Reproducir sonido y mostrar banner de ACCESO ACEPTADO
+                const accessBanner = document.getElementById('access-banner');
+                accessBanner.classList.add('show');
+
+                if (!wasCompleteLastFrame) {
+                    playAccessGrantedSound();
+                    wasCompleteLastFrame = true;
+                }
+
             } else if (probability >= THRESHOLD && classConfig[className]) {
+                // Ocultar banner de acceso
+                document.getElementById('access-banner').classList.remove('show');
                 const config = classConfig[className];
 
                 resultPanel.className = `result-panel ${config.statusClass}`;
@@ -1440,6 +1594,14 @@
                 resultDescription.textContent = `Procesando imagen. Confianza actual: ${percentage}%. Se requiere minimo ${(THRESHOLD * 100).toFixed(0)}% para una deteccion valida.`;
                 confidenceValue.textContent = `${percentage}%`;
                 reasoningSection.style.display = 'none';
+                document.getElementById('access-banner').classList.remove('show');
+                wasCompleteLastFrame = false;
+            }
+
+            // Reset flag y ocultar banner cuando no es combinado
+            if (!(eppState && eppState.isCombined)) {
+                wasCompleteLastFrame = false;
+                document.getElementById('access-banner').classList.remove('show');
             }
         }
     </script>
