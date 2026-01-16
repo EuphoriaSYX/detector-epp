@@ -1,0 +1,1447 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Deteccion EPP - Vision Artificial</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --primary-light: #60a5fa;
+            --success: #22c55e;
+            --success-dark: #16a34a;
+            --warning: #f59e0b;
+            --warning-dark: #d97706;
+            --danger: #ef4444;
+            --danger-dark: #dc2626;
+            --bg-dark: #0a0f1a;
+            --bg-card: #111827;
+            --bg-card-hover: #1f2937;
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            --border: #374151;
+            --border-light: #4b5563;
+            --glass: rgba(17, 24, 39, 0.8);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-dark);
+            min-height: 100vh;
+            color: var(--text-primary);
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* Background Pattern */
+        .bg-pattern {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            background:
+                radial-gradient(ellipse at 0% 0%, rgba(59, 130, 246, 0.12) 0%, transparent 50%),
+                radial-gradient(ellipse at 100% 100%, rgba(34, 197, 94, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.03) 0%, transparent 100%);
+        }
+
+        .bg-grid {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            background-image:
+                linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59, 130, 246, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 32px 24px;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        .header-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 100px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--primary-light);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+        }
+
+        .header-badge svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .header h1 {
+            font-size: 2.75rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            letter-spacing: -1px;
+        }
+
+        .header h1 span {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--success) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            font-weight: 400;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        /* EPP Reference Cards */
+        .epp-reference {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        @media (max-width: 900px) {
+            .epp-reference {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 500px) {
+            .epp-reference {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .epp-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .epp-card:hover {
+            border-color: var(--border-light);
+            transform: translateY(-2px);
+        }
+
+        .epp-card.active-casco {
+            border-color: var(--success);
+            background: rgba(34, 197, 94, 0.05);
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.1);
+        }
+
+        .epp-card.active-glass {
+            border-color: var(--primary);
+            background: rgba(59, 130, 246, 0.05);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.1);
+        }
+
+        .epp-card.active-normal {
+            border-color: var(--danger);
+            background: rgba(239, 68, 68, 0.05);
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.1);
+        }
+
+        .epp-card.active-combined {
+            border-color: #a855f7;
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.08), rgba(34, 197, 94, 0.05));
+            box-shadow: 0 0 25px rgba(168, 85, 247, 0.15);
+        }
+
+        .epp-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .epp-icon.casco {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(34, 197, 94, 0.1));
+        }
+
+        .epp-icon.glass {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0.1));
+        }
+
+        .epp-icon.normal {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.1));
+        }
+
+        .epp-icon.combined {
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(34, 197, 94, 0.15));
+        }
+
+        .epp-icon svg {
+            width: 28px;
+            height: 28px;
+        }
+
+        .epp-info h3 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .epp-info p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .epp-status {
+            margin-left: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-secondary);
+        }
+
+        .epp-status.detected {
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--success);
+        }
+
+        .epp-status.not-detected {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--danger);
+        }
+
+        .epp-status.combined {
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(34, 197, 94, 0.15));
+            color: #a855f7;
+        }
+
+        /* Main Layout */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 900px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .card-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-muted);
+        }
+
+        .status-dot.active {
+            background: var(--success);
+            box-shadow: 0 0 8px var(--success);
+            animation: pulse-dot 2s infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
+        }
+
+        .card-body {
+            padding: 24px;
+        }
+
+        /* Webcam Container */
+        .webcam-wrapper {
+            position: relative;
+            background: linear-gradient(145deg, #0a0f1a, #111827);
+            border-radius: 16px;
+            overflow: hidden;
+            min-height: 320px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .webcam-wrapper::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border: 2px dashed var(--border);
+            border-radius: 16px;
+            pointer-events: none;
+        }
+
+        .webcam-wrapper.active::before {
+            border: 2px solid var(--primary);
+            animation: border-pulse 2s infinite;
+        }
+
+        @keyframes border-pulse {
+            0%, 100% { border-color: var(--primary); }
+            50% { border-color: var(--success); }
+        }
+
+        #webcam-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+        }
+
+        #webcam-container canvas {
+            border-radius: 12px;
+            max-width: 100%;
+        }
+
+        .webcam-placeholder {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 40px;
+        }
+
+        .webcam-placeholder svg {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .webcam-placeholder p {
+            font-size: 0.9rem;
+        }
+
+        /* Prediction Bars */
+        .predictions-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .prediction-item {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .prediction-item.highlight {
+            border-color: var(--primary);
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .prediction-item.highlight-success {
+            border-color: var(--success);
+            background: rgba(34, 197, 94, 0.05);
+        }
+
+        .prediction-item.highlight-danger {
+            border-color: var(--danger);
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        .prediction-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .prediction-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+        }
+
+        .prediction-label svg {
+            width: 18px;
+            height: 18px;
+            opacity: 0.7;
+        }
+
+        .prediction-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .prediction-value.high {
+            color: var(--success);
+        }
+
+        .prediction-bar-track {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 100px;
+            overflow: hidden;
+        }
+
+        .prediction-bar-fill {
+            height: 100%;
+            border-radius: 100px;
+            transition: width 0.3s ease, background 0.3s ease;
+            background: linear-gradient(90deg, var(--primary), var(--primary-light));
+        }
+
+        .prediction-bar-fill.success {
+            background: linear-gradient(90deg, var(--success-dark), var(--success));
+        }
+
+        .prediction-bar-fill.danger {
+            background: linear-gradient(90deg, var(--danger-dark), var(--danger));
+        }
+
+        .prediction-bar-fill.combined {
+            background: linear-gradient(90deg, #7c3aed, #a855f7, #22c55e);
+        }
+
+        .prediction-item.highlight-combined {
+            border-color: #a855f7;
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.08), rgba(34, 197, 94, 0.05));
+            box-shadow: 0 0 15px rgba(168, 85, 247, 0.1);
+        }
+
+        /* Result Panel */
+        .result-panel {
+            background: var(--bg-card);
+            border: 2px solid var(--border);
+            border-radius: 20px;
+            padding: 32px;
+            text-align: center;
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .result-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--border);
+            transition: background 0.4s ease;
+        }
+
+        .result-panel.safe::before {
+            background: linear-gradient(90deg, var(--success-dark), var(--success));
+        }
+
+        .result-panel.warning::before {
+            background: linear-gradient(90deg, var(--warning-dark), var(--warning));
+        }
+
+        .result-panel.danger::before {
+            background: linear-gradient(90deg, var(--danger-dark), var(--danger));
+        }
+
+        .result-panel.combined::before {
+            background: linear-gradient(90deg, #7c3aed, #a855f7, #22c55e);
+        }
+
+        .result-icon-wrapper {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.03);
+            border: 2px solid var(--border);
+            transition: all 0.4s ease;
+        }
+
+        .result-panel.safe .result-icon-wrapper {
+            background: rgba(34, 197, 94, 0.1);
+            border-color: var(--success);
+        }
+
+        .result-panel.danger .result-icon-wrapper {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: var(--danger);
+        }
+
+        .result-panel.combined .result-icon-wrapper {
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(34, 197, 94, 0.1));
+            border-color: #a855f7;
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.2);
+        }
+
+        .result-icon-wrapper svg {
+            width: 36px;
+            height: 36px;
+            color: var(--text-secondary);
+            transition: color 0.4s ease;
+        }
+
+        .result-panel.safe .result-icon-wrapper svg {
+            color: var(--success);
+        }
+
+        .result-panel.danger .result-icon-wrapper svg {
+            color: var(--danger);
+        }
+
+        .result-panel.combined .result-icon-wrapper svg {
+            color: #a855f7;
+        }
+
+        .result-status {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .result-description {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .result-confidence {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .result-panel.safe .result-confidence {
+            border-color: var(--success);
+            color: var(--success);
+        }
+
+        .result-panel.danger .result-confidence {
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        .result-panel.combined .result-confidence {
+            border-color: #a855f7;
+            color: #a855f7;
+        }
+
+        /* Reasoning Section */
+        .reasoning-section {
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border);
+            text-align: left;
+        }
+
+        .reasoning-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .reasoning-title svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .reasoning-content {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .reasoning-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 8px 0;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .reasoning-item:not(:last-child) {
+            border-bottom: 1px solid var(--border);
+        }
+
+        .reasoning-item svg {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .reasoning-item.positive svg {
+            color: var(--success);
+        }
+
+        .reasoning-item.negative svg {
+            color: var(--danger);
+        }
+
+        .reasoning-item strong {
+            color: var(--text-primary);
+        }
+
+        .reasoning-highlight {
+            background: rgba(168, 85, 247, 0.1);
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 8px;
+        }
+
+        /* Start Button */
+        .start-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            width: 100%;
+            padding: 18px 32px;
+            font-family: 'Inter', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            color: white;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border: none;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 24px;
+        }
+
+        .start-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .start-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px rgba(59, 130, 246, 0.3);
+        }
+
+        .start-btn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .start-btn:disabled {
+            background: var(--border);
+            cursor: not-allowed;
+        }
+
+        .start-btn.active {
+            background: linear-gradient(135deg, var(--success), var(--success-dark));
+        }
+
+        /* Loading Spinner */
+        .loading-spinner {
+            display: none;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .loading-spinner.active {
+            display: flex;
+        }
+
+        .spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            margin-top: 48px;
+            padding: 24px;
+            border-top: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .footer a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-pattern"></div>
+    <div class="bg-grid"></div>
+
+    <div class="container">
+        <header class="header">
+            <div class="header-badge">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+                Sistema de Seguridad Industrial
+            </div>
+            <h1>Detector de <span>EPP</span></h1>
+            <p class="header-subtitle">Sistema de vision artificial para verificacion de equipos de proteccion personal en tiempo real</p>
+        </header>
+
+        <!-- EPP Reference Cards -->
+        <div class="epp-reference">
+            <div class="epp-card" id="epp-casco">
+                <div class="epp-icon casco">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M2 18a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1v-.5a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v.5z"/>
+                        <path d="M4 13.5V6a8 8 0 0 1 16 0v7.5"/>
+                    </svg>
+                </div>
+                <div class="epp-info">
+                    <h3>Casco de Seguridad</h3>
+                    <p>Proteccion craneal</p>
+                </div>
+                <span class="epp-status" id="status-casco">--</span>
+            </div>
+
+            <div class="epp-card" id="epp-glass">
+                <div class="epp-icon glass">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="6" cy="12" r="4"/>
+                        <circle cx="18" cy="12" r="4"/>
+                        <path d="M10 12h4"/>
+                        <path d="M2 12h0"/>
+                        <path d="M22 12h0"/>
+                    </svg>
+                </div>
+                <div class="epp-info">
+                    <h3>Gafas Protectoras</h3>
+                    <p>Proteccion ocular</p>
+                </div>
+                <span class="epp-status" id="status-glass">--</span>
+            </div>
+
+            <div class="epp-card" id="epp-normal">
+                <div class="epp-icon normal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                </div>
+                <div class="epp-info">
+                    <h3>Sin Equipamiento</h3>
+                    <p>Estado de alerta</p>
+                </div>
+                <span class="epp-status" id="status-normal">--</span>
+            </div>
+
+            <div class="epp-card" id="epp-combined">
+                <div class="epp-icon combined">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M2 16a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1v-.4a3 3 0 0 0-3-3H5a3 3 0 0 0-3 3v.4z" stroke="#a855f7"/>
+                        <path d="M4 12.5V7a8 8 0 0 1 16 0v5.5" stroke="#a855f7"/>
+                        <circle cx="7" cy="20" r="2.5" stroke="#22c55e"/>
+                        <circle cx="17" cy="20" r="2.5" stroke="#22c55e"/>
+                        <path d="M9.5 20h5" stroke="#22c55e"/>
+                    </svg>
+                </div>
+                <div class="epp-info">
+                    <h3>Equipamiento Completo</h3>
+                    <p>Casco + Gafas</p>
+                </div>
+                <span class="epp-status" id="status-combined">--</span>
+            </div>
+        </div>
+
+        <!-- Main Layout -->
+        <div class="main-layout">
+            <!-- Camera Section -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="status-dot" id="camera-status"></span>
+                        Camara en Vivo
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="webcam-wrapper" id="webcam-wrapper">
+                        <div id="webcam-container">
+                            <div class="webcam-placeholder" id="webcam-placeholder">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M23 7l-7 5 7 5V7z"/>
+                                    <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                                </svg>
+                                <p>Presiona iniciar para activar la camara</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="loading-spinner" id="loading">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Predictions Section -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="status-dot" id="model-status"></span>
+                        Analisis del Modelo
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="predictions-list" id="label-container">
+                        <div class="prediction-item">
+                            <div class="prediction-header">
+                                <span class="prediction-label">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                                    Esperando...
+                                </span>
+                            </div>
+                            <div class="prediction-bar-track">
+                                <div class="prediction-bar-fill" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Result Panel -->
+        <div class="result-panel" id="result-panel">
+            <div class="result-icon-wrapper" id="result-icon-wrapper">
+                <svg id="result-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="M21 21l-4.35-4.35"/>
+                </svg>
+            </div>
+            <div class="result-status" id="result-status">Esperando Deteccion</div>
+            <div class="result-description" id="result-description">Inicia la camara para comenzar el analisis de equipos de proteccion personal.</div>
+            <div class="result-confidence" id="result-confidence">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                    <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
+                </svg>
+                <span id="confidence-value">-- %</span>
+            </div>
+
+            <!-- Reasoning Section -->
+            <div class="reasoning-section" id="reasoning-section" style="display: none;">
+                <div class="reasoning-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                    </svg>
+                    Razonamiento del Sistema
+                </div>
+                <div class="reasoning-content" id="reasoning-content">
+                </div>
+            </div>
+        </div>
+
+        <button type="button" class="start-btn" id="start-btn" onclick="init()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+            </svg>
+            Iniciar Deteccion
+        </button>
+
+        <footer class="footer">
+            Sistema desarrollado con <a href="https://teachablemachine.withgoogle.com/" target="_blank">Teachable Machine</a> y TensorFlow.js
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    <script type="text/javascript">
+        const URL = "https://teachablemachine.withgoogle.com/models/87znhgQuC/";
+
+        let model, webcam, labelContainer, maxPredictions;
+
+        // Umbrales de deteccion - AJUSTADOS PARA DETECCION AGRESIVA
+        const THRESHOLD = 0.60;              // Umbral para deteccion individual fuerte
+        const THRESHOLD_PRIMARY = 0.35;      // Umbral para EPP dominante en combinado (bajado)
+        const THRESHOLD_SECONDARY = 0.05;    // Umbral minimo para segundo EPP (muy bajo)
+        const THRESHOLD_NORMAL_MAX = 0.30;   // Si normal esta por debajo, hay EPP presente
+        const THRESHOLD_COMBINED_SUM = 0.50; // Suma minima de casco+glass para considerar combinado
+
+        // Icons SVG
+        const icons = {
+            casco: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 18a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1v-.5a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v.5z"/>
+                <path d="M4 13.5V6a8 8 0 0 1 16 0v7.5"/>
+            </svg>`,
+            glass: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="6" cy="12" r="4"/>
+                <circle cx="18" cy="12" r="4"/>
+                <path d="M10 12h4"/>
+            </svg>`,
+            normal: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+            </svg>`,
+            check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"/>
+            </svg>`,
+            x: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>`,
+            alert: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>`,
+            shield: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                <polyline points="9 12 11 14 15 10"/>
+            </svg>`,
+            combined: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                <path d="M9 12l2 2 4-4"/>
+                <circle cx="12" cy="8" r="1.5" fill="currentColor"/>
+            </svg>`,
+            shieldCheck: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                <path d="M9 12l2 2 4-4"/>
+            </svg>`
+        };
+
+        // Class configuration with improved logic
+        const classConfig = {
+            'casco': {
+                icon: icons.casco,
+                title: 'CASCO DETECTADO',
+                description: 'El trabajador porta correctamente el casco de seguridad.',
+                statusClass: 'safe',
+                badgeClass: 'detected',
+                reasoning: [
+                    { type: 'positive', text: 'Casco de seguridad visible en la cabeza' },
+                    { type: 'positive', text: 'Proteccion craneal activa' }
+                ]
+            },
+            'glass': {
+                icon: icons.glass,
+                title: 'GAFAS DETECTADAS',
+                description: 'El trabajador usa gafas de proteccion ocular.',
+                statusClass: 'safe',
+                badgeClass: 'detected',
+                reasoning: [
+                    { type: 'positive', text: 'Gafas protectoras identificadas' },
+                    { type: 'positive', text: 'Proteccion ocular activa' }
+                ]
+            },
+            'normal': {
+                icon: icons.alert,
+                title: 'SIN EQUIPAMIENTO',
+                description: 'No se detecta equipo de proteccion personal. El trabajador NO utiliza casco ni gafas de seguridad.',
+                statusClass: 'danger',
+                badgeClass: 'not-detected',
+                reasoning: [
+                    { type: 'negative', text: 'No se detecta casco de seguridad' },
+                    { type: 'negative', text: 'No se detectan gafas protectoras' },
+                    { type: 'negative', text: 'Trabajador sin EPP - Requiere atencion inmediata' }
+                ]
+            },
+            'combined': {
+                icon: icons.shieldCheck,
+                title: 'EQUIPAMIENTO COMPLETO',
+                description: 'El trabajador cumple con todos los requisitos de seguridad. Porta casco y gafas de proteccion.',
+                statusClass: 'combined',
+                badgeClass: 'combined',
+                reasoning: [
+                    { type: 'positive', text: 'Casco de seguridad detectado y verificado' },
+                    { type: 'positive', text: 'Gafas de proteccion detectadas y verificadas' },
+                    { type: 'positive', text: 'Cumplimiento total de normativas de seguridad' }
+                ]
+            }
+        };
+
+        async function init() {
+            const startBtn = document.getElementById('start-btn');
+            const loading = document.getElementById('loading');
+            const cameraStatus = document.getElementById('camera-status');
+            const modelStatus = document.getElementById('model-status');
+            const webcamWrapper = document.getElementById('webcam-wrapper');
+            const placeholder = document.getElementById('webcam-placeholder');
+
+            startBtn.disabled = true;
+            startBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20" class="spinner" style="animation: spin 0.8s linear infinite;"><circle cx="12" cy="12" r="10"/></svg> Cargando modelo...`;
+            loading.classList.add('active');
+
+            try {
+                const modelURL = URL + "model.json";
+                const metadataURL = URL + "metadata.json";
+
+                model = await tmImage.load(modelURL, metadataURL);
+                maxPredictions = model.getTotalClasses();
+
+                const flip = true;
+                webcam = new tmImage.Webcam(320, 320, flip);
+                await webcam.setup();
+                await webcam.play();
+
+                window.requestAnimationFrame(loop);
+
+                if (placeholder) placeholder.style.display = 'none';
+                document.getElementById("webcam-container").appendChild(webcam.canvas);
+                webcamWrapper.classList.add('active');
+
+                labelContainer = document.getElementById("label-container");
+                labelContainer.innerHTML = '';
+
+                for (let i = 0; i < maxPredictions; i++) {
+                    const div = document.createElement("div");
+                    div.className = 'prediction-item';
+                    labelContainer.appendChild(div);
+                }
+
+                loading.classList.remove('active');
+                cameraStatus.classList.add('active');
+                modelStatus.classList.add('active');
+                startBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><polyline points="20 6 9 17 4 12"/></svg> Sistema Activo`;
+                startBtn.classList.add('active');
+
+            } catch (error) {
+                console.error('Error al inicializar:', error);
+                startBtn.disabled = false;
+                startBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg> Error - Reintentar`;
+                loading.classList.remove('active');
+                alert('Error al acceder a la camara. Por favor, permite el acceso.');
+            }
+        }
+
+        async function loop() {
+            webcam.update();
+            await predict();
+            window.requestAnimationFrame(loop);
+        }
+
+        async function predict() {
+            const prediction = await model.predict(webcam.canvas);
+
+            let predictions = {};
+            let highestPrediction = null;
+            let highestProbability = 0;
+
+            for (let i = 0; i < maxPredictions; i++) {
+                const prob = prediction[i].probability;
+                const className = prediction[i].className.toLowerCase();
+                const percentage = (prob * 100).toFixed(1);
+
+                predictions[className] = prob;
+
+                // Get icon for this class
+                let icon = icons.normal;
+                let colorClass = '';
+
+                if (className === 'casco') {
+                    icon = icons.casco;
+                    colorClass = prob > THRESHOLD ? 'highlight-success' : '';
+                } else if (className === 'glass') {
+                    icon = icons.glass;
+                    colorClass = prob > THRESHOLD ? 'highlight' : '';
+                } else if (className === 'normal') {
+                    icon = icons.normal;
+                    colorClass = prob > THRESHOLD ? 'highlight-danger' : '';
+                }
+
+                const barClass = prob > THRESHOLD ?
+                    (className === 'normal' ? 'danger' : 'success') : '';
+
+                const progressBar = `
+                    <div class="prediction-header">
+                        <span class="prediction-label">
+                            ${icon}
+                            ${className.charAt(0).toUpperCase() + className.slice(1)}
+                        </span>
+                        <span class="prediction-value ${prob > THRESHOLD ? 'high' : ''}">${percentage}%</span>
+                    </div>
+                    <div class="prediction-bar-track">
+                        <div class="prediction-bar-fill ${barClass}" style="width: ${percentage}%"></div>
+                    </div>
+                `;
+
+                labelContainer.childNodes[i].innerHTML = progressBar;
+                labelContainer.childNodes[i].className = `prediction-item ${colorClass}`;
+
+                if (prob > highestProbability) {
+                    highestProbability = prob;
+                    highestPrediction = className;
+                }
+            }
+
+            // Update EPP reference cards and check for combined state
+            const eppState = updateEPPCards(predictions);
+
+            // Add or update combined prediction bar
+            updateCombinedBar(eppState);
+
+            // Update result panel with improved reasoning (prioritize combined state)
+            updateResultPanel(highestPrediction, highestProbability, predictions, eppState);
+        }
+
+        function updateCombinedBar(eppState) {
+            let combinedBar = document.getElementById('combined-prediction-bar');
+
+            if (eppState.isCombined) {
+                const combinedPercentage = (eppState.combinedConfidence * 100).toFixed(1);
+
+                const combinedHTML = `
+                    <div class="prediction-header">
+                        <span class="prediction-label">
+                            ${icons.shieldCheck}
+                            Casco + Gafas
+                        </span>
+                        <span class="prediction-value high" style="color: #a855f7;">${combinedPercentage}%</span>
+                    </div>
+                    <div class="prediction-bar-track">
+                        <div class="prediction-bar-fill combined" style="width: ${combinedPercentage}%"></div>
+                    </div>
+                `;
+
+                if (!combinedBar) {
+                    combinedBar = document.createElement('div');
+                    combinedBar.id = 'combined-prediction-bar';
+                    combinedBar.className = 'prediction-item highlight-combined';
+                    labelContainer.insertBefore(combinedBar, labelContainer.firstChild);
+                }
+
+                combinedBar.innerHTML = combinedHTML;
+                combinedBar.className = 'prediction-item highlight-combined';
+            } else if (combinedBar) {
+                combinedBar.remove();
+            }
+        }
+
+        function updateEPPCards(predictions) {
+            const cascoProb = predictions['casco'] || 0;
+            const glassProb = predictions['glass'] || 0;
+            const normalProb = predictions['normal'] || 0;
+
+            // ============================================================
+            // LOGICA INTELIGENTE DE DETECCION COMBINADA v2.0
+            // ============================================================
+            // El modelo no fue entrenado con clase combinada, entonces cuando
+            // hay casco+gafas, una probabilidad domina y suprime la otra.
+            // Usamos multiples estrategias para detectar esto.
+
+            let isCombined = false;
+            let combinedConfidence = 0;
+            let combinedReason = '';
+
+            // Deteccion individual estandar
+            const hasCasco = cascoProb > THRESHOLD;
+            const hasGlass = glassProb > THRESHOLD;
+
+            // Suma de probabilidades de EPP
+            const eppSum = cascoProb + glassProb;
+
+            // ---- ESTRATEGIAS DE DETECCION COMBINADA ----
+
+            // Caso 1: Ambos superan el umbral alto (ideal pero raro)
+            if (hasCasco && hasGlass) {
+                isCombined = true;
+                combinedConfidence = (cascoProb + glassProb) / 2;
+                combinedReason = 'Ambos EPP detectados con alta confianza';
+            }
+            // Caso 2: Casco dominante con cualquier indicio de gafas
+            else if (cascoProb > THRESHOLD_PRIMARY && glassProb > THRESHOLD_SECONDARY && normalProb < THRESHOLD_NORMAL_MAX) {
+                isCombined = true;
+                combinedConfidence = cascoProb * 0.65 + glassProb * 0.25 + (1 - normalProb) * 0.15;
+                combinedReason = 'Casco detectado + indicios de gafas';
+            }
+            // Caso 3: Gafas dominantes con cualquier indicio de casco
+            else if (glassProb > THRESHOLD_PRIMARY && cascoProb > THRESHOLD_SECONDARY && normalProb < THRESHOLD_NORMAL_MAX) {
+                isCombined = true;
+                combinedConfidence = glassProb * 0.65 + cascoProb * 0.25 + (1 - normalProb) * 0.15;
+                combinedReason = 'Gafas detectadas + indicios de casco';
+            }
+            // Caso 4: Suma de EPP significativa con normal bajo
+            else if (eppSum > THRESHOLD_COMBINED_SUM && normalProb < THRESHOLD_NORMAL_MAX) {
+                isCombined = true;
+                combinedConfidence = eppSum * 0.7 + (1 - normalProb) * 0.3;
+                combinedReason = 'Suma de EPP alta con normal bajo';
+            }
+            // Caso 5: Normal muy bajo (< 10%) = definitivamente hay EPP
+            else if (normalProb < 0.10 && eppSum > 0.40) {
+                isCombined = true;
+                combinedConfidence = eppSum * 0.6 + (1 - normalProb) * 0.4;
+                combinedReason = 'Normal casi nulo indica EPP completo';
+            }
+            // Caso 6: Uno alto y el otro tiene algo de señal
+            else if ((cascoProb > 0.70 && glassProb > 0.03) || (glassProb > 0.70 && cascoProb > 0.03)) {
+                if (normalProb < 0.20) {
+                    isCombined = true;
+                    combinedConfidence = Math.max(cascoProb, glassProb) * 0.7 + Math.min(cascoProb, glassProb) * 0.15 + (1 - normalProb) * 0.2;
+                    combinedReason = 'EPP dominante con señal secundaria detectada';
+                }
+            }
+            // Caso 7: Deteccion por exclusion - si no es normal, debe ser EPP
+            else if (normalProb < 0.05 && (cascoProb > 0.20 || glassProb > 0.20)) {
+                isCombined = true;
+                combinedConfidence = (1 - normalProb) * 0.5 + eppSum * 0.5;
+                combinedReason = 'Normal casi 0% = EPP presente por exclusion';
+            }
+
+            // Limitar confianza al 100%
+            combinedConfidence = Math.min(combinedConfidence, 1.0);
+
+            // Update Casco card
+            const cascoCard = document.getElementById('epp-casco');
+            const cascoStatus = document.getElementById('status-casco');
+            const cascoActive = hasCasco || (isCombined && cascoProb > THRESHOLD_SECONDARY);
+            cascoCard.className = `epp-card ${cascoActive ? 'active-casco' : ''}`;
+            cascoStatus.textContent = `${(cascoProb * 100).toFixed(0)}%`;
+            cascoStatus.className = `epp-status ${cascoActive ? 'detected' : ''}`;
+
+            // Update Glass card
+            const glassCard = document.getElementById('epp-glass');
+            const glassStatus = document.getElementById('status-glass');
+            const glassActive = hasGlass || (isCombined && glassProb > THRESHOLD_SECONDARY);
+            glassCard.className = `epp-card ${glassActive ? 'active-glass' : ''}`;
+            glassStatus.textContent = `${(glassProb * 100).toFixed(0)}%`;
+            glassStatus.className = `epp-status ${glassActive ? 'detected' : ''}`;
+
+            // Update Normal card
+            const normalCard = document.getElementById('epp-normal');
+            const normalStatus = document.getElementById('status-normal');
+            const normalActive = normalProb > THRESHOLD && !isCombined;
+            normalCard.className = `epp-card ${normalActive ? 'active-normal' : ''}`;
+            normalStatus.textContent = `${(normalProb * 100).toFixed(0)}%`;
+            normalStatus.className = `epp-status ${normalActive ? 'not-detected' : ''}`;
+
+            // Update Combined card
+            const combinedCard = document.getElementById('epp-combined');
+            const combinedStatus = document.getElementById('status-combined');
+            if (isCombined) {
+                const combinedScore = (combinedConfidence * 100).toFixed(0);
+                combinedCard.className = 'epp-card active-combined';
+                combinedStatus.textContent = `${combinedScore}%`;
+                combinedStatus.className = 'epp-status combined';
+            } else {
+                combinedCard.className = 'epp-card';
+                combinedStatus.textContent = '--';
+                combinedStatus.className = 'epp-status';
+            }
+
+            return {
+                isCombined,
+                hasCasco: cascoActive,
+                hasGlass: glassActive,
+                cascoProb,
+                glassProb,
+                normalProb,
+                combinedConfidence,
+                combinedReason
+            };
+        }
+
+        function updateResultPanel(className, probability, allPredictions, eppState) {
+            const resultPanel = document.getElementById('result-panel');
+            const resultIconWrapper = document.getElementById('result-icon-wrapper');
+            const resultIcon = document.getElementById('result-icon');
+            const resultStatus = document.getElementById('result-status');
+            const resultDescription = document.getElementById('result-description');
+            const confidenceValue = document.getElementById('confidence-value');
+            const reasoningSection = document.getElementById('reasoning-section');
+            const reasoningContent = document.getElementById('reasoning-content');
+
+            const percentage = (probability * 100).toFixed(1);
+
+            // Check if combined state takes priority (both casco and glass detected)
+            if (eppState && eppState.isCombined) {
+                const config = classConfig['combined'];
+                const combinedPercentage = (eppState.combinedConfidence * 100).toFixed(1);
+
+                resultPanel.className = `result-panel ${config.statusClass}`;
+                resultIcon.outerHTML = config.icon.replace('<svg', '<svg id="result-icon"');
+                resultStatus.textContent = config.title;
+                resultDescription.textContent = config.description;
+                confidenceValue.textContent = `${combinedPercentage}%`;
+
+                // Show combined reasoning with intelligent analysis
+                reasoningSection.style.display = 'block';
+
+                const cascoPercent = (eppState.cascoProb * 100).toFixed(1);
+                const glassPercent = (eppState.glassProb * 100).toFixed(1);
+                const normalPercent = (eppState.normalProb * 100).toFixed(1);
+
+                let reasoningHTML = `
+                    <div class="reasoning-item positive">
+                        ${icons.check}
+                        <span>Casco de seguridad: ${cascoPercent}% ${eppState.cascoProb > THRESHOLD ? '(deteccion fuerte)' : '(detectado)'}</span>
+                    </div>
+                    <div class="reasoning-item positive">
+                        ${icons.check}
+                        <span>Gafas protectoras: ${glassPercent}% ${eppState.glassProb > THRESHOLD ? '(deteccion fuerte)' : '(detectado por analisis combinado)'}</span>
+                    </div>
+                    <div class="reasoning-item positive">
+                        ${icons.shield}
+                        <span>Normal/Sin EPP: ${normalPercent}% (muy bajo = EPP presente)</span>
+                    </div>
+                    <div class="reasoning-item positive" style="background: rgba(168, 85, 247, 0.1); margin-top: 8px; padding: 12px; border-radius: 8px;">
+                        ${icons.shieldCheck}
+                        <span><strong>ANALISIS:</strong> ${eppState.combinedReason}. Confianza combinada: ${combinedPercentage}%</span>
+                    </div>
+                `;
+                reasoningContent.innerHTML = reasoningHTML;
+
+            } else if (probability >= THRESHOLD && classConfig[className]) {
+                const config = classConfig[className];
+
+                resultPanel.className = `result-panel ${config.statusClass}`;
+                resultIcon.outerHTML = config.icon.replace('<svg', '<svg id="result-icon"');
+                resultStatus.textContent = config.title;
+                resultDescription.textContent = config.description;
+                confidenceValue.textContent = `${percentage}%`;
+
+                // Show reasoning
+                reasoningSection.style.display = 'block';
+                let reasoningHTML = '';
+
+                // Add dynamic reasoning based on all predictions
+                if (className === 'normal') {
+                    // When no equipment is detected, show 100% certainty message
+                    reasoningHTML += `
+                        <div class="reasoning-item negative">
+                            ${icons.x}
+                            <span>Deteccion de casco: ${(allPredictions['casco'] * 100).toFixed(1)}% - No detectado</span>
+                        </div>
+                        <div class="reasoning-item negative">
+                            ${icons.x}
+                            <span>Deteccion de gafas: ${(allPredictions['glass'] * 100).toFixed(1)}% - No detectado</span>
+                        </div>
+                        <div class="reasoning-item negative">
+                            ${icons.alert}
+                            <span>Conclusion: Trabajador SIN equipo de proteccion (${percentage}% de confianza)</span>
+                        </div>
+                    `;
+                } else {
+                    config.reasoning.forEach(item => {
+                        reasoningHTML += `
+                            <div class="reasoning-item ${item.type}">
+                                ${item.type === 'positive' ? icons.check : icons.x}
+                                <span>${item.text}</span>
+                            </div>
+                        `;
+                    });
+                }
+
+                reasoningContent.innerHTML = reasoningHTML;
+
+            } else {
+                resultPanel.className = 'result-panel';
+                resultIcon.outerHTML = `<svg id="result-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="M21 21l-4.35-4.35"/>
+                </svg>`;
+                resultStatus.textContent = 'ANALIZANDO';
+                resultDescription.textContent = `Procesando imagen. Confianza actual: ${percentage}%. Se requiere minimo ${(THRESHOLD * 100).toFixed(0)}% para una deteccion valida.`;
+                confidenceValue.textContent = `${percentage}%`;
+                reasoningSection.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
